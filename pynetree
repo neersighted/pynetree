@@ -14,11 +14,10 @@ import requests
 import multiprocessing
 
 # Argument parsing
-parser = argparse.ArgumentParser(description="minecraft classic"
-                                 " server emulator",
-                                 epilog="http://git.io/pynetree")
-parser.add_argument("-V", "--version", action="version",
-                    version="%(prog)s 1.0")
+parser = argparse.ArgumentParser(prog="pynetree", version=" %(prog)s 1.0",
+                                 description="minecraft classic server"
+                                 "emulator", epilog="http://git.io/pynetree",
+                                 conflict_handler="resolve")
 parser.add_argument("-C", "--config", metavar="CONFIG", dest="config",
                     action="store", default="config",
                     help="load CONFIG as a pynetree config file"
@@ -275,4 +274,3 @@ def main():
 if __name__ == "__main__":
     multiprocessing.freeze_support()  # Support cxFreeze and the like
     main()
-
