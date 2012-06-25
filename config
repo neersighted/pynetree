@@ -20,7 +20,7 @@
             }
         },
         "beat_time": 45,
-        "name": "[pynetree] Test Server",
+        "name": "[pynetree] Test Server - git.io/pynetree",
         "port": 25565,
         "current_users": 0,
         "max_users": 20,
@@ -29,7 +29,5 @@
             "enabled": false,
             "file": ""
         }
-    },
-    "stats": true,
-    "debug": false
+    }
 }

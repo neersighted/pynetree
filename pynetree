@@ -1,16 +1,47 @@
 #!/usr/bin/env python
 
+# Imports
 import os
+import six
 import sys
 import json
 import time
-import struct
 import socket
-import requests
+import struct
+import argparse
 import binascii
+import requests
 import multiprocessing
 
+# Argument parsing
+parser = argparse.ArgumentParser(description="minecraft classic"
+                                 " server emulator",
+                                 epilog="http://git.io/pynetree")
+parser.add_argument("-V", "--version", action="version",
+                    version="%(prog)s 1.0")
+parser.add_argument("-C", "--config", metavar="CONFIG", dest="config",
+                    action="store", default="config",
+                    help="load CONFIG as a pynetree config file"
+                    " (default: %(default)s)")
+parser.add_argument("-d", "-v", "--debug", dest="debug", action="store_true",
+                    default=False, help="enable debug mode"
+                    " (default: %(default)s)")
+parser.add_argument("-s", "--stats", dest="stats", action="store_true",
+                    default=False, help="enable stats mode"
+                    " (default: %(default)s)")
+parser.add_argument("-F", "--fakebeatcount", metavar="FAKEBEATCOUNT",
+                    dest="beat_count", action="store", default="0",
+                    help="limit fakebeat to FAKEBEATCOUNT beats,"
+                    " 0 means infinite (default: %(default)s)")
+parser.add_argument("-S", "--simservercount", metavar="SIMSERVERCOUNT",
+                    dest="server_count", action="store", default="0",
+                    help="limit simserver to SIMSERVERCOUNT connections,"
+                    "0 means infinite (default: %(default)s)")
 
+args = parser.parse_args()
+
+
+# Config reader
 def loadConfig(file):
     """Loads the config"""
     try:
@@ -22,17 +53,18 @@ def loadConfig(file):
         exit()
 
 
-def fakeBeatConnection(beat_list_location, beat_name, beat_port,\
-                    beat_current_users, beat_max_users, beat_salt):
+# Fakebeat
+def fakeBeatConnection(beat_list_location, beat_name, beat_port,
+                       beat_current_users, beat_max_users, beat_salt):
     """Pings a Minecraft Classic Server List"""
     beat_params = {
-                    "name": beat_name,
-                    "port": beat_port,
-                    "users": beat_current_users,
-                    "max": beat_max_users,
-                    "salt": beat_salt,
-                    "public": "true",
-                    "version": 7
+        "name": beat_name,
+        "port": beat_port,
+        "users": beat_current_users,
+        "max": beat_max_users,
+        "salt": beat_salt,
+        "public": "true",
+        "version": 7
     }
 
     beat = requests.get(beat_list_location, params=beat_params)
@@ -60,8 +92,8 @@ def fakeBeatStatus(beat, status_code, data):
         print("[fakebeat] error code: %s" % status_code)
 
 
-def fakeBeat(beats, beat_name, beat_port, beat_current_users,\
-            beat_max_users, beat_salt, beat_time):
+def fakeBeat(beats, beat_name, beat_port, beat_current_users,
+             beat_max_users, beat_salt, beat_time, beat_count):
     """Automaticly connects to Minecraft Classic Server Lists"""
     total_count = 0
     individual_count = 0
@@ -70,23 +102,23 @@ def fakeBeat(beats, beat_name, beat_port, beat_current_users,\
         while True:
             time.sleep(beat_time)
 
-            for beat in beats:
-                beat_list_name = beats[beat]["name"]
-                beat_list_location = beats[beat]["location"]
+            for beat, beat_config in six.iteritems(beats):
+                beat_list_name = beat_config["name"]
+                beat_list_location = beat_config["location"]
 
-                beat_override_salt = beats[beat]["override_salt"]
+                beat_override_salt = beat_config["override_salt"]
 
                 if beat_override_salt:
                     beat_salt = beat_override_salt
 
                 if debug:
                     print("[fakebeat:debug] beat salt: %s" % beat_salt)
-                    print("[fakebeat:debug] beat list: %s (%s)" % (beat_list_name,\
-                                                    beat_list_location))
+                    print("[fakebeat:debug] beat list: %s (%s)" % (
+                          beat_list_name, beat_list_location))
 
-                beat = fakeBeatConnection(beat_list_location, beat_name,\
-                                        beat_port, beat_current_users,\
-                                        beat_max_users, beat_salt)
+                beat = fakeBeatConnection(beat_list_location, beat_name,
+                                          beat_port, beat_current_users,
+                                          beat_max_users, beat_salt)
 
                 beat_status_code = beat[0]
                 beat_data = beat[1]
@@ -94,6 +126,8 @@ def fakeBeat(beats, beat_name, beat_port, beat_current_users,\
                 fakeBeatStatus(beat_list_name, beat_status_code, beat_data)
                 individual_count += 1
             total_count += 1
+            if beat_count != 0 and total_count <= beat_count:
+                sys.exit()
 
     except KeyboardInterrupt:
         if stats:
@@ -102,11 +136,12 @@ def fakeBeat(beats, beat_name, beat_port, beat_current_users,\
         print("[fakebeat] stopping...")
 
 
+# Simserver
 def simServerConnection(conn, addr):
     """Simulates a Minecraft Classic server connection"""
     data = conn.recv(64)
 
-    client_name = data[2:].decode().replace(chr(0), "")
+    client_name = data[2:].decode().replace(chr(0), "")  # Py3k
     client_name = client_name.replace(" ", "").replace("\r\n", "")
     client_ip = addr[0]
 
@@ -114,15 +149,15 @@ def simServerConnection(conn, addr):
 
     print("[simserver] connect: %s (%s)" % (client_name, client_ip))
     conn.send(packet)
-    print("[simserver] transmit: %s (%s)" % (client_name, client_ip))
     if debug:
+        print("[simserver:debug] transmit: %s (%s)" % (client_name, client_ip))
         print("[simserver:debug] packet: %s (%s)" % (packet, raw_packet))
     conn.shutdown(socket.SHUT_RDWR)
     conn.close()
     print("[simserver] disconnect: %s (%s)" % (client_name, client_ip))
 
 
-def simServer(server_ip, server_port, server_message):
+def simServer(server_ip, server_port, server_message, server_count):
     """Simulates a Minecraft Classic server"""
     count = 0
 
@@ -131,7 +166,7 @@ def simServer(server_ip, server_port, server_message):
     packet_type = 14
 
     packet = packet_struct.pack(packet_type, server_message.encode())
-    packet = packet.decode().replace(chr(0), chr(32)).encode()
+    packet = packet.decode().replace(chr(0), chr(32)).encode()  # Py3k
 
     try:
         while True:
@@ -150,9 +185,11 @@ def simServer(server_ip, server_port, server_message):
         while True:
             server.listen(1)
             conn, addr = server.accept()
-            multiprocessing.Process(target=simServerConnection,\
+            multiprocessing.Process(target=simServerConnection,
                                     args=(conn, addr)).start()
             count += 1
+            if server_count != 0 and count <= server_count:
+                sys.exit()
 
     except KeyboardInterrupt:
         if stats:
@@ -160,6 +197,7 @@ def simServer(server_ip, server_port, server_message):
         print("[simserver] stopping...")
 
 
+# Main loop
 def main():
     """pynetree - minecraft classic server emulator"""
     try:
@@ -167,16 +205,18 @@ def main():
 
         print("[pynetree] loading config...")
 
-        config = loadConfig("config")
+        # Load config
+        config = loadConfig(args.config)
 
         global debug, stats
-        debug = config["debug"]
-        stats = config["stats"]
+        debug = args.debug
+        stats = args.stats
 
         run_simserver = config["simserver"]["enabled"]
         server_ip = config["simserver"]["server_ip"]
         server_port = config["simserver"]["server_port"]
         server_message = config["simserver"]["server_message"]
+        server_count = args.server_count
 
         run_fakebeat = config["fakebeat"]["enabled"]
         beats = config["fakebeat"]["beats"]
@@ -185,51 +225,53 @@ def main():
         beat_port = config["fakebeat"]["port"]
         beat_current_users = config["fakebeat"]["current_users"]
         beat_max_users = config["fakebeat"]["max_users"]
-
         use_beat_salt_file = config["fakebeat"]["salt_file"]["enabled"]
         beat_salt_file = config["fakebeat"]["salt_file"]["file"]
-
         if use_beat_salt_file:
             beat_salt = open(beat_salt_file, "r").readlines()
             beat_salt = "".join(beat_salt).replace("\n", "")
         else:
             beat_salt = config["fakebeat"]["salt"]
+        beat_count = args.beat_count
 
         if debug:
             print("[pynetree:debug] config: %s" % config)
         print("[pynetree] config loaded...")
 
-        if run_fakebeat == False and run_simserver == False:
+        # Run fakebeat and/or simserver
+        if not run_fakebeat and not run_simserver:
             print("[pynetree] error: no modules enabled")
-            exit()
+            sys.exit()
         if run_fakebeat:
             print("[fakebeat] starting...")
-            fakebeat = multiprocessing.Process(target=fakeBeat, args=(beats,\
-                                            beat_name, beat_port,\
-                                            beat_current_users,\
-                                            beat_max_users,\
-                                            beat_salt, beat_time))
+            fakebeat = multiprocessing.Process(target=fakeBeat, args=(beats,
+                                               beat_name, beat_port,
+                                               beat_current_users,
+                                               beat_max_users,
+                                               beat_salt, beat_time,
+                                               beat_count))
             fakebeat.start()
 
         if run_simserver:
             print("[simserver] starting...")
-            simserver = multiprocessing.Process(target=simServer,\
-                                                args=(server_ip,\
-                                                server_port, server_message))
+            simserver = multiprocessing.Process(target=simServer,
+                                                args=(server_ip,
+                                                server_port, server_message,
+                                                server_count))
             simserver.start()
 
         while True:
-            pass
+            pass  # Why Python, why?
 
     except KeyboardInterrupt:
         exit()
 
-    except KeyError as e:
+    except KeyError as e:  # FIXME: does not catch ALL config errors
         print("[pynetree] error: malformed config (or missing item)")
         print("[pynetree] error details:")
         print(e)
         exit()
 
 if __name__ == "__main__":
-    multiprocessing.freeze_support()
+    multiprocessing.freeze_support()  # Support cxFreeze and the like
     main()

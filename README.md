@@ -8,11 +8,11 @@ Think of it as MCSignOnDoor, but for Minecraft Classic.
 
 ## Dependencies
 
-pynetree depends on `urllib3`, and `requests`
+pynetree depends on `six`, `urllib3`, and `requests`
 
 Get them with `pip` (The Python Package Manager):
 
-`[sudo] pip install urllib3 requests`
+`[sudo] pip install six urllib3 requests`
 
 ## Configuration
 
@@ -20,4 +20,6 @@ Config should be self explanatory, [email](mailto:neersighted@neersighted.com) m
 
 ## Usage
 
-`./pynetree.py`
+`./pynetree`
+
+(`./pynetree --help` for options)
