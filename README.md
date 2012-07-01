@@ -16,7 +16,7 @@ Get them with `pip` (The Python Package Manager):
 
 ## Configuration
 
-Config should be self explanatory, [email](mailto:neersighted@neersighted.com) me if you need help, or find me on [irc](irc://irc.esper.net/neersighted).
+Config should be self explanatory, [email](mailto:neersighted@neersighted.com) me if you need help.
 
 ## Usage
 
