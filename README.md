@@ -1,22 +1,12 @@
 # pynetree
 
-pynetree is a Minecraft Classic server emulator. It is best used with `fakebeat` and `simserver` enabled. 
-
-Think of it as MCSignOnDoor, but for Minecraft Classic.
-
-## Using pynetree
+pynetree is a Minecraft Classic server emulator.
 
 ## Dependencies
 
-pynetree depends on `six`, `urllib3`, and `requests`
+pynetree depends on certain modules, get them with `pip`:
 
-Get them with `pip` (The Python Package Manager):
-
-`[sudo] pip install six urllib3 requests`
-
-## Configuration
-
-Config should be self explanatory, [email](mailto:neersighted@neersighted.com) me if you need help.
+`[sudo] pip install -r requirements.txt`
 
 ## Usage
 
@@ -29,7 +19,7 @@ Config should be self explanatory, [email](mailto:neersighted@neersighted.com) m
 pynetree is licensed under a three-clause BSD license. The terms are as follows:
 
 ```
-Copyright (c) 2012, neersighted <neersighted@neersighted.com>
+Copyright (c) 2012, neersighted <neersighted@myopera.com.com>
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
